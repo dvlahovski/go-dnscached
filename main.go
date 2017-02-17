@@ -35,7 +35,11 @@ func main() {
 
 	cache := cache.NewCache(*config)
 
-	server := server.NewServer(*cache)
+	server := server.NewServer(*cache, *config)
+	if server == nil {
+		return
+	}
+
 	serverErrors := server.ListenAndServe()
 
 	sigs := make(chan os.Signal, 1)

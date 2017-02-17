@@ -28,9 +28,10 @@ type CacheEntry struct {
 }
 
 type Cache struct {
-	cache  map[string]CacheEntry
-	lock   sync.Mutex
-	config config.Config
+	cache    map[string]CacheEntry
+	capacity int
+	lock     sync.Mutex
+	config   config.Config
 }
 
 func NewCache(config config.Config) *Cache {
@@ -38,6 +39,13 @@ func NewCache(config config.Config) *Cache {
 	c.cache = make(map[string]CacheEntry)
 	c.lock = *new(sync.Mutex)
 	c.config = config
+	c.capacity = config.Cache.MaxEntries
+
+	if c.capacity <= 0 {
+		log.Printf("bad capacity value in config, setting to 1000")
+		c.capacity = 1000
+	}
+
 	c.start()
 	return c
 }
@@ -84,6 +92,10 @@ func (c *Cache) Insert(key string, value dns.Msg) bool {
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
+
+	if len(c.cache) >= c.capacity {
+		return false
+	}
 
 	if _, ok := c.cache[key]; ok {
 		log.Printf("cache item (%s) exists on insert", key)

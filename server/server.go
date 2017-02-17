@@ -2,8 +2,13 @@ package server
 
 import (
 	"log"
+	"math/rand"
+	"net"
+	"strconv"
+	"time"
 
 	"github.com/dvlahovski/go-dnscached/cache"
+	"github.com/dvlahovski/go-dnscached/config"
 	"github.com/miekg/dns"
 )
 
@@ -11,11 +16,31 @@ type Server struct {
 	server    *dns.Server
 	outErrors chan struct{}
 	cache     cache.Cache
+	servers   []net.UDPAddr
 }
 
-func NewServer(cache cache.Cache) *Server {
+func NewServer(cache cache.Cache, config config.Config) *Server {
 	s := new(Server)
-	s.server = &dns.Server{Addr: ":3333", Net: "udp"}
+	addr := net.JoinHostPort(config.Server.Address.String(), strconv.Itoa(config.Server.Port))
+	log.Printf("Server listening at %s", addr)
+	s.server = &dns.Server{Addr: addr, Net: "udp"}
+
+	if len(config.Server.Servers) <= 0 {
+		log.Printf("no dns servers to use!")
+		return nil
+	}
+
+	s.servers = make([]net.UDPAddr, len(config.Server.Servers))
+	for i, addr := range config.Server.Servers {
+		udpAddr, err := net.ResolveUDPAddr("udp", addr)
+		if err != nil {
+			log.Println(err)
+			return nil
+		}
+
+		s.servers[i] = *udpAddr
+	}
+
 	s.outErrors = make(chan struct{})
 	s.cache = cache
 
@@ -26,6 +51,12 @@ func (s *Server) Shutdown() error {
 	return s.server.Shutdown()
 }
 
+func (s *Server) getRandServer() string {
+	rand.Seed(time.Now().Unix())
+	n := rand.Int() % len(s.servers)
+	return s.servers[n].String()
+}
+
 func (s *Server) makeRequest(questions []dns.Question) (dns.Msg, bool) {
 	request := new(dns.Msg)
 	request.Id = dns.Id()
@@ -34,7 +65,8 @@ func (s *Server) makeRequest(questions []dns.Question) (dns.Msg, bool) {
 	copy(request.Question, questions)
 
 	client := new(dns.Client)
-	serverResponse, _, err := client.Exchange(request, "95.87.194.5:53")
+	serverAddr := s.getRandServer()
+	serverResponse, _, err := client.Exchange(request, serverAddr)
 
 	if err != nil {
 		log.Printf("%s\n", err.Error())

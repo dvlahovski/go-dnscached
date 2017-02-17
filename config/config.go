@@ -25,7 +25,7 @@ type CacheConfig struct {
 type ServerConfig struct {
 	Address net.IP   `json:"Address"`
 	Port    int      `json:"Port"`
-	Servers []net.IP `json:"Servers"`
+	Servers []string `json:"Servers"`
 }
 
 func (c *Config) Valid() bool {
