@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -32,6 +33,7 @@ func main() {
 	if err != nil {
 		return
 	}
+	fmt.Printf("%v\n", config)
 
 	cache := cache.NewCache(*config)
 

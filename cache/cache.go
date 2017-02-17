@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -21,6 +22,34 @@ func calcTTL(value dns.Msg) uint32 {
 	return minTTL
 }
 
+func createPlaceholderMsg(key string, ip string, recordType uint16, ttl int) (*dns.Msg, error) {
+	var typeStr string
+
+	if recordType == dns.TypeA {
+		typeStr = "A"
+	} else if recordType == dns.TypeAAAA {
+		typeStr = "AAAA"
+	} else {
+		return nil, fmt.Errorf("Invalid RR")
+	}
+
+	msg := new(dns.Msg)
+	msg.Id = dns.Id()
+	msg.RecursionDesired = true
+	// msg.SetQuestion("google.bg.", dns.TypeA)
+	msg.SetQuestion(dns.Fqdn(key), recordType)
+
+	var err error
+	msg.Answer = make([]dns.RR, 1)
+	RR := fmt.Sprintf("%s %d IN %s %s", dns.Fqdn(key), ttl, typeStr, ip)
+	msg.Answer[0], err = dns.NewRR(RR)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid RR")
+	}
+
+	return msg, nil
+}
+
 type Entry struct {
 	ttl   int
 	hits  int
@@ -35,21 +64,45 @@ type Cache struct {
 	config        config.Config
 }
 
-func NewCache(config config.Config) *Cache {
+func NewCache(cfg config.Config) *Cache {
 	c := new(Cache)
 	c.cache = make(map[string]Entry)
 	c.lock = *new(sync.Mutex)
-	c.config = config
-	c.capacity = config.Cache.MaxEntries
-	c.flushInterval = config.Cache.FlushInterval
+	c.config = cfg
+	c.capacity = cfg.Cache.MaxEntries
+	c.flushInterval = cfg.Cache.FlushInterval
 
 	if c.capacity <= 0 {
 		log.Printf("bad capacity value in config, setting to 1000")
 		c.capacity = 1000
 	}
 
+	c.hardcodeRecords(cfg.Entries)
+
 	c.start()
 	return c
+}
+
+func (c *Cache) hardcodeRecords(entries []config.CacheEntry) {
+	for _, entry := range entries {
+		var recordType uint16
+		if entry.Type == "A" {
+			recordType = dns.TypeA
+		} else if entry.Type == "AAAA" {
+			recordType = dns.TypeAAAA
+		} else {
+			log.Printf("skipping hardode entry")
+			continue
+		}
+
+		msg, err := createPlaceholderMsg(entry.Key, entry.Value.String(), recordType, entry.Ttl)
+        if err != nil {
+            log.Printf("skipping hardode entry")
+            continue
+        }
+
+		c.Insert(dns.Fqdn(entry.Key) + entry.Type, *msg)
+	}
 }
 
 func (c *Cache) flush() {
@@ -58,6 +111,10 @@ func (c *Cache) flush() {
 
 	now := time.Now().Unix()
 	for key, entry := range c.cache {
+        if entry.ttl == 0 {
+            continue
+        }
+
 		if int64(entry.ttl) <= now {
 			log.Printf("deleting key %s", key)
 			delete(c.cache, key)
@@ -100,8 +157,14 @@ func (c *Cache) Insert(key string, value dns.Msg) bool {
 	}
 
 	entry := new(Entry)
-	entry.ttl = int(time.Now().Unix() + int64(calcTTL(value)))
-	log.Printf("%s ttl %d", key, calcTTL(value))
+    ttl := calcTTL(value)
+    if ttl == 0 {
+        entry.ttl = 0
+    } else {
+    	entry.ttl = int(time.Now().Unix() + int64(ttl))
+    }
+
+	log.Printf("%s ttl %d", key, ttl)
 	entry.hits = 0
 	entry.value = value
 

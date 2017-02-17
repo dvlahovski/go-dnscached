@@ -1,4 +1,9 @@
 {
+    "Server": {
+        "Address": "0.0.0.0:3333",
+        "Servers": ["8.8.8.8:53", "95.87.194.5:53"]
+    },
+
     "Cache": {
         "MaxEntries": 1000,
         "MinTTL": 60,
@@ -6,8 +11,12 @@
         "Policy": "default"
     },
 
-    "Server": {
-        "Address": "0.0.0.0:3333",
-        "Servers": ["8.8.8.8:53", "95.87.194.5:53"]
-    }
+    "CacheEntries": [
+        {
+            "Key": "asdf.bg",
+            "Type": "A",
+            "Value": "1.2.3.4",
+            "Ttl": 0
+        }
+    ]
 }

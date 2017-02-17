@@ -131,7 +131,13 @@ func (s *Server) handleRequest(dnsWriter dns.ResponseWriter, clientRequest *dns.
 		return
 	}
 
-	question := clientRequest.Question[0].String()
+	question := clientRequest.Question[0].Name
+    if clientRequest.Question[0].Qtype == dns.TypeA {
+        question += "A"
+    } else {
+        question += "AAAA"
+    }
+
 	cachedMsg, hit := s.cache.Get(question)
 
 	reply := new(dns.Msg)

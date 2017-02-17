@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"os"
 )
 
@@ -11,8 +12,14 @@ const PolicyDefault = "default"
 const PolicyKeepMostUsed = "keep-most-used"
 
 type Config struct {
-	Cache  CacheConfig  `json:"Cache"`
-	Server ServerConfig `json:"Server"`
+	Server  ServerConfig `json:"Server"`
+	Cache   CacheConfig  `json:"Cache"`
+	Entries []CacheEntry `json:"CacheEntries"`
+}
+
+type ServerConfig struct {
+	Address string   `json:"Address"`
+	Servers []string `json:"Servers"`
 }
 
 type CacheConfig struct {
@@ -22,9 +29,11 @@ type CacheConfig struct {
 	Policy        string `json:"Policy"`
 }
 
-type ServerConfig struct {
-	Address string   `json:"Address"`
-	Servers []string `json:"Servers"`
+type CacheEntry struct {
+	Key   string `json:"Key"`
+	Value net.IP `json:"Value"`
+	Type  string `json:"Type"`
+	Ttl   int    `json:"Ttl"`
 }
 
 func (c *Config) Valid() bool {
