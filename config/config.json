@@ -1,0 +1,13 @@
+{
+    "Cache": {
+        "MaxEntries": 1000,
+        "MinTTL": 60,
+        "Policy": "default"
+    },
+
+    "Server": {
+        "Address": "127.0.0.1",
+        "Port": 5555,
+        "Servers": ["8.8.8.8"]
+    }
+}

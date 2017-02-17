@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/dvlahovski/go-dnscached/cache"
+	"github.com/dvlahovski/go-dnscached/config"
 	"github.com/dvlahovski/go-dnscached/server"
 )
 
@@ -25,8 +26,14 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	log.Printf("Daemon started")
+	defer log.Printf("Daemon shutdown")
 
-	cache := cache.NewCache()
+	config, err := config.Load()
+	if err != nil {
+		return
+	}
+
+	cache := cache.NewCache(*config)
 
 	server := server.NewServer(*cache)
 	serverErrors := server.ListenAndServe()
@@ -44,5 +51,4 @@ func main() {
 		log.Printf("Server error")
 	}
 
-	log.Printf("Daemon shutdown")
 }

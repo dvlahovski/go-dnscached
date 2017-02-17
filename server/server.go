@@ -61,15 +61,6 @@ func (s *Server) shouldSendErrorResponse(response dns.Msg, status bool) int {
 }
 
 func (s *Server) passThrough(dnsWriter dns.ResponseWriter, clientRequest *dns.Msg) {
-	// request := new(dns.Msg)
-	// request.Id = dns.Id()
-	// request.RecursionDesired = true
-	// request.Question = make([]dns.Question, len(clientRequest.Question))
-	// copy(request.Question, clientRequest.Question)
-
-	// client := new(dns.Client)
-	// serverResponse, _, err := client.Exchange(request, "95.87.194.5:53")
-
 	serverResponse, ok := s.makeRequest(clientRequest.Question)
 
 	reply := new(dns.Msg)
