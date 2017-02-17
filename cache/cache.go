@@ -21,25 +21,27 @@ func calcTTL(value dns.Msg) uint32 {
 	return minTTL
 }
 
-type CacheEntry struct {
+type Entry struct {
 	ttl   int
 	hits  int
 	value dns.Msg
 }
 
 type Cache struct {
-	cache    map[string]CacheEntry
-	capacity int
-	lock     sync.Mutex
-	config   config.Config
+	cache         map[string]Entry
+	capacity      int
+	flushInterval int
+	lock          sync.Mutex
+	config        config.Config
 }
 
 func NewCache(config config.Config) *Cache {
 	c := new(Cache)
-	c.cache = make(map[string]CacheEntry)
+	c.cache = make(map[string]Entry)
 	c.lock = *new(sync.Mutex)
 	c.config = config
 	c.capacity = config.Cache.MaxEntries
+	c.flushInterval = config.Cache.FlushInterval
 
 	if c.capacity <= 0 {
 		log.Printf("bad capacity value in config, setting to 1000")
@@ -50,7 +52,7 @@ func NewCache(config config.Config) *Cache {
 	return c
 }
 
-func (c *Cache) refresh() {
+func (c *Cache) flush() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -64,24 +66,19 @@ func (c *Cache) refresh() {
 }
 
 func (c *Cache) start() {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(time.Duration(c.flushInterval) * time.Second)
 	quit := make(chan struct{})
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
-				c.refresh()
+				c.flush()
 			case <-quit:
 				ticker.Stop()
 				return
 			}
 		}
 	}()
-}
-
-func (c *Cache) LookUp(key string) bool {
-	_, ok := c.cache[key]
-	return ok
 }
 
 func (c *Cache) Insert(key string, value dns.Msg) bool {
@@ -102,7 +99,7 @@ func (c *Cache) Insert(key string, value dns.Msg) bool {
 		return false
 	}
 
-	entry := new(CacheEntry)
+	entry := new(Entry)
 	entry.ttl = int(time.Now().Unix() + int64(calcTTL(value)))
 	log.Printf("%s ttl %d", key, calcTTL(value))
 	entry.hits = 0

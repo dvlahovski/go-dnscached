@@ -1,10 +1,10 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"net"
-	"strconv"
 	"time"
 
 	"github.com/dvlahovski/go-dnscached/cache"
@@ -19,23 +19,25 @@ type Server struct {
 	servers   []net.UDPAddr
 }
 
-func NewServer(cache cache.Cache, config config.Config) *Server {
+func NewServer(cache cache.Cache, config config.Config) (*Server, error) {
 	s := new(Server)
-	addr := net.JoinHostPort(config.Server.Address.String(), strconv.Itoa(config.Server.Port))
-	log.Printf("Server listening at %s", addr)
-	s.server = &dns.Server{Addr: addr, Net: "udp"}
+	addr, err := net.ResolveUDPAddr("udp", config.Server.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf("Server listening at %s", addr.String())
+	s.server = &dns.Server{Addr: addr.String(), Net: "udp"}
 
 	if len(config.Server.Servers) <= 0 {
-		log.Printf("no dns servers to use!")
-		return nil
+		return nil, fmt.Errorf("no dns servers to use")
 	}
 
 	s.servers = make([]net.UDPAddr, len(config.Server.Servers))
 	for i, addr := range config.Server.Servers {
 		udpAddr, err := net.ResolveUDPAddr("udp", addr)
 		if err != nil {
-			log.Println(err)
-			return nil
+			return nil, err
 		}
 
 		s.servers[i] = *udpAddr
@@ -44,7 +46,7 @@ func NewServer(cache cache.Cache, config config.Config) *Server {
 	s.outErrors = make(chan struct{})
 	s.cache = cache
 
-	return s
+	return s, nil
 }
 
 func (s *Server) Shutdown() error {
@@ -163,12 +165,6 @@ func (s *Server) handleRequest(dnsWriter dns.ResponseWriter, clientRequest *dns.
 	copy(reply.Extra, response.Extra)
 
 	dnsWriter.WriteMsg(reply)
-
-	// if t, ok := in.Answer[0].(*dns.A); ok {
-	//     fmt.Printf("asdasdsad %s\n", t.A)
-	// } else {
-	//     fmt.Printf("Fail: %+V\n", ok)
-	// }
 }
 
 func (s *Server) ListenAndServe() chan struct{} {

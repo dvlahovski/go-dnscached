@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net"
 	"os"
 )
 
@@ -17,14 +16,14 @@ type Config struct {
 }
 
 type CacheConfig struct {
-	MaxEntries int    `json:"MaxEntries"`
-	MinTTL     int    `json:"MinTTL"`
-	Policy     string `json:"Policy"`
+	MaxEntries    int    `json:"MaxEntries"`
+	MinTTL        int    `json:"MinTTL"`
+	FlushInterval int    `json:"FlushInterval"`
+	Policy        string `json:"Policy"`
 }
 
 type ServerConfig struct {
-	Address net.IP   `json:"Address"`
-	Port    int      `json:"Port"`
+	Address string   `json:"Address"`
 	Servers []string `json:"Servers"`
 }
 

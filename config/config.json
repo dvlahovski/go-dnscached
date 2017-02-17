@@ -2,12 +2,12 @@
     "Cache": {
         "MaxEntries": 1000,
         "MinTTL": 60,
+        "FlushInterval": 30,
         "Policy": "default"
     },
 
     "Server": {
-        "Address": "0.0.0.0",
-        "Port": 3333,
+        "Address": "0.0.0.0:3333",
         "Servers": ["8.8.8.8:53", "95.87.194.5:53"]
     }
 }

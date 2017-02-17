@@ -35,8 +35,9 @@ func main() {
 
 	cache := cache.NewCache(*config)
 
-	server := server.NewServer(*cache, *config)
-	if server == nil {
+	server, err := server.NewServer(*cache, *config)
+	if err != nil {
+		log.Printf("server creation error: %s", err.Error())
 		return
 	}
 
