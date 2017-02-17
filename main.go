@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/dvlahovski/go-dnscached/cache"
 	"github.com/dvlahovski/go-dnscached/server"
 )
 
@@ -25,7 +26,9 @@ func main() {
 
 	log.Printf("Daemon started")
 
-	server := server.NewServer()
+	cache := cache.NewCache()
+
+	server := server.NewServer(*cache)
 	serverErrors := server.ListenAndServe()
 
 	sigs := make(chan os.Signal, 1)
@@ -35,7 +38,7 @@ func main() {
 	case sig := <-sigs:
 		log.Printf("Caught signal: %s", sig)
 		if err := server.Shutdown(); err != nil {
-			log.Printf("server shutdown error: %s", err.Error())
+			log.Printf("Server shutdown error: %s", err.Error())
 		}
 	case <-serverErrors:
 		log.Printf("Server error")

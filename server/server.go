@@ -1,24 +1,23 @@
 package server
 
 import (
-	"fmt"
 	"log"
-	"reflect"
 
+	"github.com/dvlahovski/go-dnscached/cache"
 	"github.com/miekg/dns"
 )
 
 type Server struct {
-	server *dns.Server
-	// inErrors chan struct {}
+	server    *dns.Server
 	outErrors chan struct{}
+	cache     cache.Cache
 }
 
-func NewServer() *Server {
+func NewServer(cache cache.Cache) *Server {
 	s := new(Server)
 	s.server = &dns.Server{Addr: ":3333", Net: "udp"}
-	// s.inErrors = make(chan struct{})
 	s.outErrors = make(chan struct{})
+	s.cache = cache
 
 	return s
 }
@@ -27,28 +26,59 @@ func (s *Server) Shutdown() error {
 	return s.server.Shutdown()
 }
 
-func passThrough(dnsWriter dns.ResponseWriter, clientRequest *dns.Msg) {
+func (s *Server) makeRequest(questions []dns.Question) (dns.Msg, bool) {
 	request := new(dns.Msg)
 	request.Id = dns.Id()
 	request.RecursionDesired = true
-	request.Question = make([]dns.Question, len(clientRequest.Question))
-	copy(request.Question, clientRequest.Question)
+	request.Question = make([]dns.Question, len(questions))
+	copy(request.Question, questions)
 
 	client := new(dns.Client)
 	serverResponse, _, err := client.Exchange(request, "95.87.194.5:53")
 
-	reply := new(dns.Msg)
-
-	if err != nil || serverResponse == nil {
+	if err != nil {
 		log.Printf("%s\n", err.Error())
-		reply.SetRcode(clientRequest, dns.RcodeServerFailure)
-		dnsWriter.WriteMsg(reply)
-		return
+		return dns.Msg{}, false
 	}
 
-	if serverResponse.Rcode != dns.RcodeSuccess {
-		reply.SetRcode(clientRequest, serverResponse.Rcode)
+	if serverResponse == nil {
+		return dns.Msg{}, false
+	}
+
+	return *serverResponse, true
+}
+
+func (s *Server) shouldSendErrorResponse(response dns.Msg, status bool) int {
+	if !status {
+		return dns.RcodeServerFailure
+	}
+
+	if response.Rcode != dns.RcodeSuccess {
+		return response.Rcode
+	}
+
+	return dns.RcodeSuccess
+}
+
+func (s *Server) passThrough(dnsWriter dns.ResponseWriter, clientRequest *dns.Msg) {
+	// request := new(dns.Msg)
+	// request.Id = dns.Id()
+	// request.RecursionDesired = true
+	// request.Question = make([]dns.Question, len(clientRequest.Question))
+	// copy(request.Question, clientRequest.Question)
+
+	// client := new(dns.Client)
+	// serverResponse, _, err := client.Exchange(request, "95.87.194.5:53")
+
+	serverResponse, ok := s.makeRequest(clientRequest.Question)
+
+	reply := new(dns.Msg)
+
+	rcode := s.shouldSendErrorResponse(serverResponse, ok)
+	if rcode != dns.RcodeSuccess {
+		reply.SetRcode(clientRequest, rcode)
 		dnsWriter.WriteMsg(reply)
+		return
 	}
 
 	reply.SetReply(clientRequest)
@@ -65,37 +95,52 @@ func passThrough(dnsWriter dns.ResponseWriter, clientRequest *dns.Msg) {
 	dnsWriter.WriteMsg(reply)
 }
 
-func handleRequest(w dns.ResponseWriter, r *dns.Msg) {
-	// fmt.Printf("%+v\n", r)
-	// fmt.Printf("%d\n", r.Question[0].Qtype)
-
-	// TODO skip if not A or AAAA
-	// TODO skip if question count != 1
-	if (len(r.Question)) != 1 {
-
+func (s *Server) handleRequest(dnsWriter dns.ResponseWriter, clientRequest *dns.Msg) {
+	if (len(clientRequest.Question)) != 1 {
+		s.passThrough(dnsWriter, clientRequest)
+		return
 	}
 
-	m := new(dns.Msg)
-	m.Id = dns.Id()
-	m.RecursionDesired = true
-	m.Question = make([]dns.Question, len(r.Question))
-	copy(m.Question, r.Question)
-
-	c := new(dns.Client)
-	in, _, err := c.Exchange(m, "95.87.194.5:53")
-
-	// fmt.Printf("%+V\n", in)
-	fmt.Printf("sizeof %d\n", reflect.TypeOf(in.Answer).Size())
-
-	if err != nil {
-		fmt.Printf("Fail: %s\n", err.Error())
+	if clientRequest.Question[0].Qtype != dns.TypeA && clientRequest.Question[0].Qtype != dns.TypeAAAA {
+		s.passThrough(dnsWriter, clientRequest)
+		return
 	}
 
-	// fmt.Printf("--------------\n")
-	// fmt.Printf("%+v\n", in)
-	// fmt.Printf("--------------\n")
-	// fmt.Printf("%+V\n", in.Answer[0])
-	// fmt.Printf("--------------\n")
+	question := clientRequest.Question[0].String()
+	cachedMsg, hit := s.cache.Get(question)
+
+	reply := new(dns.Msg)
+	response := dns.Msg{}
+
+	if hit {
+		response = cachedMsg
+	} else {
+		var ok = false
+		response, ok = s.makeRequest(clientRequest.Question)
+
+		rcode := s.shouldSendErrorResponse(response, ok)
+		if rcode != dns.RcodeSuccess {
+			reply.SetRcode(clientRequest, rcode)
+			dnsWriter.WriteMsg(reply)
+			return
+		}
+
+		s.cache.Insert(question, response)
+	}
+
+	reply.SetReply(clientRequest)
+
+	reply.Answer = make([]dns.RR, len(response.Answer))
+	copy(reply.Answer, response.Answer)
+
+	reply.Ns = make([]dns.RR, len(response.Ns))
+	copy(reply.Ns, response.Ns)
+
+	reply.Extra = make([]dns.RR, len(response.Extra))
+	copy(reply.Extra, response.Extra)
+
+	dnsWriter.WriteMsg(reply)
+
 	// if t, ok := in.Answer[0].(*dns.A); ok {
 	//     fmt.Printf("asdasdsad %s\n", t.A)
 	// } else {
@@ -104,7 +149,7 @@ func handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 }
 
 func (s *Server) ListenAndServe() chan struct{} {
-	dns.HandleFunc(".", passThrough)
+	dns.HandleFunc(".", s.handleRequest)
 
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil {
@@ -115,21 +160,5 @@ func (s *Server) ListenAndServe() chan struct{} {
 		defer s.server.Shutdown()
 	}()
 
-	// go func () {
-	//     <- s.inErrors
-	//     log.Printf("here")
-	//     s.server.Shutdown()
-	// }()
-
 	return s.outErrors
 }
-
-// TODO
-// func SetupLogging() {
-//     file, err := os.OpenFile("log.txt", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-//     if err != nil {
-//         log.Fatalln("Failed to open log file", output, ":", err)
-//     }
-
-//     MyFile = log.New(file, "", log.Ldate|log.Ltime|log.Lshortfile)
-// }
