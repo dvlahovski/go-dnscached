@@ -29,29 +29,38 @@ func TestListenAndServe(t *testing.T) {
 	server := getServer(t)
 	defer server.Shutdown()
 
-	serverErrors := server.ListenAndServe()
+	errors := make(chan error)
+	go func() {
+		errors <- server.ListenAndServe()
+	}()
 
 	select {
-	case <-serverErrors:
+	case <-errors:
 		t.Fatalf("ListenAndServe fail")
 	case <-time.After(2 * time.Second):
 	}
 }
 
 func TestListenAndServeFail(t *testing.T) {
+	errors := make(chan error)
 	server := getServer(t)
-	serverErrors := server.ListenAndServe()
+	go func() {
+		errors <- server.ListenAndServe()
+	}()
 	defer server.Shutdown()
 
 	time.Sleep(1 * time.Second)
 
+	errors2 := make(chan error)
 	server2 := getServer(t)
-	serverErrors2 := server2.ListenAndServe()
+	go func() {
+		errors2 <- server.ListenAndServe()
+	}()
 	defer server2.Shutdown()
 
 	select {
-	case <-serverErrors2:
-	case <-serverErrors:
+	case <-errors2:
+	case <-errors:
 		t.Fatalf("ListenAndServe should fail")
 	case <-time.After(1 * time.Second):
 		t.Fatalf("ListenAndServe should fail")

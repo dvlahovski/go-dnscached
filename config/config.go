@@ -10,6 +10,7 @@ import (
 
 // PolicyDefault is the default caching policy
 const PolicyDefault = "default"
+
 // PolicyKeepMostUsed TODO
 const PolicyKeepMostUsed = "keep-most-used"
 
