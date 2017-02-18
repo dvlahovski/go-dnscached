@@ -136,11 +136,29 @@ func TestGetEntry(t *testing.T) {
 
 	entry, ok := cache.GetEntry("google.bg")
 	if !ok {
-		t.Fatal("get failed")
+		t.Fatal("get entry failed")
 	}
 
 	if entry.ttl != int(msg.Answer[0].Header().Ttl) + int(now) {
 		t.Fatalf("expected %d ttl, got %d", int(msg.Answer[0].Header().Ttl) + int(now), entry.ttl)
+	}
+
+	if entry.hits != 0 {
+		t.Fatal("hits should be 0")
+	}
+
+	_, ok = cache.Get("google.bg")
+	if !ok {
+		t.Fatal("get failed")
+	}
+
+	entry, ok = cache.GetEntry("google.bg")
+	if !ok {
+		t.Fatal("get entry failed")
+	}
+
+	if entry.hits != 1 {
+		t.Fatal("hits should be 1")
 	}
 }
 
