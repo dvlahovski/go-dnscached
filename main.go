@@ -44,10 +44,13 @@ func main() {
 		return
 	}
 
-	serverErrors := server.ListenAndServe()
+	// serverErrors := server.ListenAndServe()
+    go func() {
+        log.Fatal(server.ListenAndServe())
+    }()
 
 	go func() {
-		api.Run(server, cache)
+		log.Fatal(api.Run(server, cache))
 	}()
 
 	sigs := make(chan os.Signal, 1)
@@ -59,8 +62,8 @@ func main() {
 		if err := server.Shutdown(); err != nil {
 			log.Printf("Server shutdown error: %s", err.Error())
 		}
-	case <-serverErrors:
-		log.Printf("Server error")
+	// case <-serverErrors:
+	// 	log.Printf("Server error")
 	}
 
 }

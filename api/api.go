@@ -13,6 +13,7 @@ import (
 	"github.com/miekg/dns"
 )
 
+// retrieve a GET param by key
 func getParams(req *http.Request, key string) (string, bool) {
 	if req.Method != http.MethodGet {
 		return "", false
@@ -28,6 +29,7 @@ func getParams(req *http.Request, key string) (string, bool) {
 	return value, true
 }
 
+// retrieve a GET param by key; if it doesn't exists - respong with bad request
 func requiredParam(w http.ResponseWriter, req *http.Request, key string) (string, bool) {
 	value, exists := getParams(req, key)
 
@@ -40,11 +42,13 @@ func requiredParam(w http.ResponseWriter, req *http.Request, key string) (string
 	return value, true
 }
 
+// API insance
 type API struct {
 	server *server.Server
 	cache  *cache.Cache
 }
 
+// get all entries in the cache and display then in JSON
 func (api *API) cacheList(w http.ResponseWriter, req *http.Request) {
 	jsonString, err := json.Marshal(api.cache)
 	if err != nil {
@@ -54,6 +58,7 @@ func (api *API) cacheList(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, string(jsonString))
 }
 
+// get a specific entry from the cache, by key = FQDN.TYPE
 func (api *API) cacheGet(w http.ResponseWriter, req *http.Request) {
 	value, exists := getParams(req, "key")
 
@@ -79,6 +84,7 @@ func (api *API) cacheGet(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, string(jsonString))
 }
 
+// delete a record from the cache by key = FQDN.TYPE
 func (api *API) cacheDelete(w http.ResponseWriter, req *http.Request) {
 	value, exists := getParams(req, "key")
 
@@ -99,6 +105,10 @@ func (api *API) cacheDelete(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// insert record in the cache with key = FQDN
+// type (one of A or AAAA)
+// ttl in seconds (0 for permanent)
+// value - IP address
 func (api *API) cacheInsert(w http.ResponseWriter, req *http.Request) {
 	var all bool = true
 	key, exists := requiredParam(w, req, "key")
@@ -137,7 +147,8 @@ func (api *API) cacheInsert(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func Run(server *server.Server, cache *cache.Cache) {
+// run the API HTTP server
+func Run(server *server.Server, cache *cache.Cache) error {
 	api := new(API)
 	api.cache = cache
 	api.server = server
@@ -158,5 +169,5 @@ func Run(server *server.Server, cache *cache.Cache) {
 
 	s := &http.Server{Addr: ":8282", Handler: mux, WriteTimeout: 1 * time.Second}
 	log.Printf("Starting server on %s", s.Addr)
-	log.Fatal(s.ListenAndServe())
+	return s.ListenAndServe()
 }

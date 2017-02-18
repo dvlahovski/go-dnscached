@@ -44,6 +44,7 @@ func (c *Config) Valid() bool {
 	return true
 }
 
+// load the contents of the JSON config file and make some validations
 func Load() (*Config, error) {
 	file, err := os.Open("config/config.json")
 	if err != nil {

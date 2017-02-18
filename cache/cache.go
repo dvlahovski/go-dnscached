@@ -68,6 +68,7 @@ type Cache struct {
 	config        config.Config
 }
 
+// get a new cache instance
 func NewCache(cfg config.Config) *Cache {
 	c := new(Cache)
 	c.cache = make(map[string]Entry)
@@ -87,6 +88,7 @@ func NewCache(cfg config.Config) *Cache {
 	return c
 }
 
+// populate the cache with hardcoded records from the config
 func (c *Cache) hardcodeRecords(entries []config.CacheEntry) {
 	for _, entry := range entries {
 		var recordType uint16
@@ -109,6 +111,7 @@ func (c *Cache) hardcodeRecords(entries []config.CacheEntry) {
 	}
 }
 
+// flush all the records with expired ttl
 func (c *Cache) flush() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -126,6 +129,7 @@ func (c *Cache) flush() {
 	}
 }
 
+// start the ticker that flushes every flushInterval seconds
 func (c *Cache) start() {
 	ticker := time.NewTicker(time.Duration(c.flushInterval) * time.Second)
 	quit := make(chan struct{})
@@ -142,6 +146,7 @@ func (c *Cache) start() {
 	}()
 }
 
+// insert a DNS msg in the cache
 func (c *Cache) Insert(key string, value dns.Msg) bool {
 	if len(value.Answer) <= 0 {
 		log.Printf("expecting at least one answer in the msg")
@@ -181,6 +186,7 @@ func (c *Cache) Insert(key string, value dns.Msg) bool {
 	return true
 }
 
+// insert from separate params
 func (c *Cache) InsertFromParams(key string, ip string, recordType uint16, ttl int) bool {
 	msg, err := createPlaceholderMsg(key, ip, recordType, ttl)
 	if err != nil {
@@ -197,6 +203,7 @@ func (c *Cache) InsertFromParams(key string, ip string, recordType uint16, ttl i
 	return c.Insert(dns.Fqdn(key)+recordTypeStr, *msg)
 }
 
+// get a DNS msg from the cache
 func (c *Cache) Get(key string) (dns.Msg, bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -212,11 +219,13 @@ func (c *Cache) Get(key string) (dns.Msg, bool) {
 	return c.cache[key].value, true
 }
 
+// get the bare entry
 func (c *Cache) GetEntry(key string) (Entry, bool) {
 	entry, ok := c.cache[key]
 	return entry, ok
 }
 
+// delete an entry
 func (c *Cache) Delete(key string) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
