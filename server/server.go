@@ -12,15 +12,14 @@ import (
 	"github.com/miekg/dns"
 )
 
-// Server object
-// servers is the list of DNS servers that we forward to
+// servers is the list of DNS servers that we forward to/ask
 type Server struct {
-	server    *dns.Server
-	cache     cache.Cache
-	servers   []net.UDPAddr
+	server  *dns.Server
+	cache   cache.Cache
+	servers []net.UDPAddr
 }
 
-// get a new server ready to start serving
+// Get a new server ready to start serving
 func NewServer(cache cache.Cache, config config.Config) (*Server, error) {
 	s := new(Server)
 	addr, err := net.ResolveUDPAddr("udp", config.Server.Address)
@@ -50,19 +49,19 @@ func NewServer(cache cache.Cache, config config.Config) (*Server, error) {
 	return s, nil
 }
 
-// gracefull shutdown
+// Gracefull shutdown
 func (s *Server) Shutdown() error {
 	return s.server.Shutdown()
 }
 
-// get a random DNS server to query
+// Get a random DNS server to query
 func (s *Server) getRandServer() string {
 	rand.Seed(time.Now().Unix())
 	n := rand.Int() % len(s.servers)
 	return s.servers[n].String()
 }
 
-// make a DNS request to a server
+// Make a DNS request to a server
 func (s *Server) makeRequest(questions []dns.Question) (dns.Msg, bool) {
 	request := new(dns.Msg)
 	// request.SetEdns0(4096, true)
@@ -87,7 +86,7 @@ func (s *Server) makeRequest(questions []dns.Question) (dns.Msg, bool) {
 	return *serverResponse, true
 }
 
-// if something went wrong - inform the client
+// If something went wrong - inform the client
 func (s *Server) shouldSendErrorResponse(response dns.Msg, status bool) int {
 	if !status {
 		return dns.RcodeServerFailure
@@ -100,8 +99,8 @@ func (s *Server) shouldSendErrorResponse(response dns.Msg, status bool) int {
 	return dns.RcodeSuccess
 }
 
-// act as a forwarding server without caching
-// this is in the case where the query is not of type A or AAAA
+// Act as a forwarding server without caching
+// This is in the case where the query is not of type A or AAAA
 func (s *Server) passThrough(dnsWriter dns.ResponseWriter, clientRequest *dns.Msg) {
 	serverResponse, ok := s.makeRequest(clientRequest.Question)
 
@@ -128,9 +127,9 @@ func (s *Server) passThrough(dnsWriter dns.ResponseWriter, clientRequest *dns.Ms
 	dnsWriter.WriteMsg(reply)
 }
 
-// handle a client request
-// check if there is a cache record and return it or create it
-// ask one of the DNS servers if the record is not in the cache
+// Handle a client request
+// Check if there is a cache record and return it or create it
+// Ask one of the DNS servers if the record is not in the cache
 func (s *Server) handleRequest(dnsWriter dns.ResponseWriter, clientRequest *dns.Msg) {
 	if (len(clientRequest.Question)) != 1 {
 		s.passThrough(dnsWriter, clientRequest)
@@ -184,13 +183,13 @@ func (s *Server) handleRequest(dnsWriter dns.ResponseWriter, clientRequest *dns.
 	dnsWriter.WriteMsg(reply)
 }
 
-// start the server
+// Start the server
 func (s *Server) ListenAndServe() error {
 	dns.HandleFunc(".", s.handleRequest)
 
 	if err := s.server.ListenAndServe(); err != nil {
-        return err
+		return err
 	}
 
-    return nil
+	return nil
 }

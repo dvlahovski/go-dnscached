@@ -45,9 +45,9 @@ func main() {
 	}
 
 	// serverErrors := server.ListenAndServe()
-    go func() {
-        log.Fatal(server.ListenAndServe())
-    }()
+	go func() {
+		log.Fatal(server.ListenAndServe())
+	}()
 
 	go func() {
 		log.Fatal(api.Run(server, cache))
@@ -56,14 +56,9 @@ func main() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
-	select {
-	case sig := <-sigs:
-		log.Printf("Caught signal: %s", sig)
-		if err := server.Shutdown(); err != nil {
-			log.Printf("Server shutdown error: %s", err.Error())
-		}
-	// case <-serverErrors:
-	// 	log.Printf("Server error")
+	sig := <-sigs
+	log.Printf("Caught signal: %s", sig)
+	if err := server.Shutdown(); err != nil {
+		log.Printf("Server shutdown error: %s", err.Error())
 	}
-
 }

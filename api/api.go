@@ -110,7 +110,7 @@ func (api *API) cacheDelete(w http.ResponseWriter, req *http.Request) {
 // ttl in seconds (0 for permanent)
 // value - IP address
 func (api *API) cacheInsert(w http.ResponseWriter, req *http.Request) {
-	var all bool = true
+	all := true
 	key, exists := requiredParam(w, req, "key")
 	all = all && exists
 	recordTypeStr, exists := requiredParam(w, req, "type")
@@ -147,7 +147,7 @@ func (api *API) cacheInsert(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// run the API HTTP server
+// Run the API HTTP server
 func Run(server *server.Server, cache *cache.Cache) error {
 	api := new(API)
 	api.cache = cache

@@ -13,7 +13,7 @@ import (
 	"github.com/miekg/dns"
 )
 
-// calculate the min TTL of a slice of dns Answers
+// Calculate the min TTL of a slice of dns Answers
 func calcTTL(value dns.Msg) uint32 {
 	minTTL := value.Answer[0].Header().Ttl
 	for _, answer := range value.Answer {
@@ -25,7 +25,7 @@ func calcTTL(value dns.Msg) uint32 {
 	return minTTL
 }
 
-// create a dummy placeholder dns.Msg from domain namen, ip, record type, ttl
+// Create a dummy placeholder dns.Msg from domain namen, ip, record type, ttl
 func createPlaceholderMsg(key string, ip string, recordType uint16, ttl int) (*dns.Msg, error) {
 	var typeStr string
 
@@ -54,12 +54,14 @@ func createPlaceholderMsg(key string, ip string, recordType uint16, ttl int) (*d
 	return msg, nil
 }
 
+// Entry is the cache's internal entry representation
 type Entry struct {
-	ttl   int `json:"ttl"`
+	ttl   int
 	hits  int
-	value dns.Msg `json:"value"`
+	value dns.Msg
 }
 
+// Cache object
 type Cache struct {
 	cache         map[string]Entry
 	capacity      int
@@ -68,7 +70,7 @@ type Cache struct {
 	config        config.Config
 }
 
-// get a new cache instance
+// NewCache returns a new cache instance
 func NewCache(cfg config.Config) *Cache {
 	c := new(Cache)
 	c.cache = make(map[string]Entry)
@@ -88,7 +90,7 @@ func NewCache(cfg config.Config) *Cache {
 	return c
 }
 
-// populate the cache with hardcoded records from the config
+// Populate the cache with hardcoded records from the config
 func (c *Cache) hardcodeRecords(entries []config.CacheEntry) {
 	for _, entry := range entries {
 		var recordType uint16
@@ -111,7 +113,7 @@ func (c *Cache) hardcodeRecords(entries []config.CacheEntry) {
 	}
 }
 
-// flush all the records with expired ttl
+// Flush all the records with expired ttl
 func (c *Cache) flush() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -129,7 +131,7 @@ func (c *Cache) flush() {
 	}
 }
 
-// start the ticker that flushes every flushInterval seconds
+// Start the ticker that flushes every flushInterval seconds
 func (c *Cache) start() {
 	ticker := time.NewTicker(time.Duration(c.flushInterval) * time.Second)
 	quit := make(chan struct{})
@@ -146,7 +148,7 @@ func (c *Cache) start() {
 	}()
 }
 
-// insert a DNS msg in the cache
+// Insert a DNS msg in the cache
 func (c *Cache) Insert(key string, value dns.Msg) bool {
 	if len(value.Answer) <= 0 {
 		log.Printf("expecting at least one answer in the msg")
@@ -186,7 +188,7 @@ func (c *Cache) Insert(key string, value dns.Msg) bool {
 	return true
 }
 
-// insert from separate params
+// InsertFromParams - insert and entry from separate params
 func (c *Cache) InsertFromParams(key string, ip string, recordType uint16, ttl int) bool {
 	msg, err := createPlaceholderMsg(key, ip, recordType, ttl)
 	if err != nil {
@@ -203,7 +205,7 @@ func (c *Cache) InsertFromParams(key string, ip string, recordType uint16, ttl i
 	return c.Insert(dns.Fqdn(key)+recordTypeStr, *msg)
 }
 
-// get a DNS msg from the cache
+// Get a DNS msg from the cache
 func (c *Cache) Get(key string) (dns.Msg, bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -219,13 +221,13 @@ func (c *Cache) Get(key string) (dns.Msg, bool) {
 	return c.cache[key].value, true
 }
 
-// get the bare entry
+// GetEntry returns the internal entry
 func (c *Cache) GetEntry(key string) (Entry, bool) {
 	entry, ok := c.cache[key]
 	return entry, ok
 }
 
-// delete an entry
+// Delete an entry
 func (c *Cache) Delete(key string) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -235,6 +237,7 @@ func (c *Cache) Delete(key string) bool {
 	return ok
 }
 
+// MarshalJSON return a json representation of an entry
 func (e Entry) MarshalJSON() ([]byte, error) {
 	buffer := bytes.NewBufferString("{")
 
@@ -250,6 +253,7 @@ func (e Entry) MarshalJSON() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+// MarshalJSON returns a json representation of the cache's contents
 func (c *Cache) MarshalJSON() ([]byte, error) {
 	return json.Marshal(c.cache)
 }
