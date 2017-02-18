@@ -44,7 +44,6 @@ func main() {
 		return
 	}
 
-	// serverErrors := server.ListenAndServe()
 	go func() {
 		log.Fatal(server.ListenAndServe())
 	}()

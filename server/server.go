@@ -49,7 +49,7 @@ func NewServer(cache cache.Cache, config config.Config) (*Server, error) {
 	return s, nil
 }
 
-// Gracefull shutdown
+// Shutdown gracefully
 func (s *Server) Shutdown() error {
 	return s.server.Shutdown()
 }
@@ -64,7 +64,6 @@ func (s *Server) getRandServer() string {
 // Make a DNS request to a server
 func (s *Server) makeRequest(questions []dns.Question) (dns.Msg, bool) {
 	request := new(dns.Msg)
-	// request.SetEdns0(4096, true)
 	request.Id = dns.Id()
 	request.RecursionDesired = true
 	request.Question = make([]dns.Question, len(questions))
