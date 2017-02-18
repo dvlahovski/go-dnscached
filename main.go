@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/dvlahovski/go-dnscached/api"
 	"github.com/dvlahovski/go-dnscached/cache"
 	"github.com/dvlahovski/go-dnscached/config"
 	"github.com/dvlahovski/go-dnscached/server"
@@ -44,6 +45,10 @@ func main() {
 	}
 
 	serverErrors := server.ListenAndServe()
+
+	go func() {
+		api.Run(server, cache)
+	}()
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)

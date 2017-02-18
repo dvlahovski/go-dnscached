@@ -24,7 +24,7 @@ type ServerConfig struct {
 
 type CacheConfig struct {
 	MaxEntries    int    `json:"MaxEntries"`
-	MinTTL        int    `json:"MinTTL"`
+	MinTTL        uint32 `json:"MinTTL"`
 	FlushInterval int    `json:"FlushInterval"`
 	Policy        string `json:"Policy"`
 }

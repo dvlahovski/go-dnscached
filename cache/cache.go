@@ -1,8 +1,11 @@
 package cache
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,6 +25,7 @@ func calcTTL(value dns.Msg) uint32 {
 	return minTTL
 }
 
+// create a dummy placeholder dns.Msg from domain namen, ip, record type, ttl
 func createPlaceholderMsg(key string, ip string, recordType uint16, ttl int) (*dns.Msg, error) {
 	var typeStr string
 
@@ -51,9 +55,9 @@ func createPlaceholderMsg(key string, ip string, recordType uint16, ttl int) (*d
 }
 
 type Entry struct {
-	ttl   int
+	ttl   int `json:"ttl"`
 	hits  int
-	value dns.Msg
+	value dns.Msg `json:"value"`
 }
 
 type Cache struct {
@@ -96,12 +100,12 @@ func (c *Cache) hardcodeRecords(entries []config.CacheEntry) {
 		}
 
 		msg, err := createPlaceholderMsg(entry.Key, entry.Value.String(), recordType, entry.Ttl)
-        if err != nil {
-            log.Printf("skipping hardode entry")
-            continue
-        }
+		if err != nil {
+			log.Printf("skipping hardode entry")
+			continue
+		}
 
-		c.Insert(dns.Fqdn(entry.Key) + entry.Type, *msg)
+		c.Insert(dns.Fqdn(entry.Key)+entry.Type, *msg)
 	}
 }
 
@@ -111,9 +115,9 @@ func (c *Cache) flush() {
 
 	now := time.Now().Unix()
 	for key, entry := range c.cache {
-        if entry.ttl == 0 {
-            continue
-        }
+		if entry.ttl == 0 {
+			continue
+		}
 
 		if int64(entry.ttl) <= now {
 			log.Printf("deleting key %s", key)
@@ -157,20 +161,40 @@ func (c *Cache) Insert(key string, value dns.Msg) bool {
 	}
 
 	entry := new(Entry)
-    ttl := calcTTL(value)
-    if ttl == 0 {
-        entry.ttl = 0
-    } else {
-    	entry.ttl = int(time.Now().Unix() + int64(ttl))
-    }
+	ttl := calcTTL(value)
+	if ttl == 0 {
+		entry.ttl = 0
+	} else {
+		if ttl < c.config.Cache.MinTTL {
+			ttl = c.config.Cache.MinTTL
+		}
 
-	log.Printf("%s ttl %d", key, ttl)
+		entry.ttl = int(time.Now().Unix() + int64(ttl))
+	}
+
+	log.Printf("insert %s ttl %d", key, ttl)
 	entry.hits = 0
 	entry.value = value
 
 	c.cache[key] = *entry
 
 	return true
+}
+
+func (c *Cache) InsertFromParams(key string, ip string, recordType uint16, ttl int) bool {
+	msg, err := createPlaceholderMsg(key, ip, recordType, ttl)
+	if err != nil {
+		return false
+	}
+
+	recordTypeStr := ""
+	if recordType == dns.TypeA {
+		recordTypeStr = "A"
+	} else if recordType == dns.TypeAAAA {
+		recordTypeStr = "AAAA"
+	}
+
+	return c.Insert(dns.Fqdn(key)+recordTypeStr, *msg)
 }
 
 func (c *Cache) Get(key string) (dns.Msg, bool) {
@@ -188,9 +212,35 @@ func (c *Cache) Get(key string) (dns.Msg, bool) {
 	return c.cache[key].value, true
 }
 
-func (c *Cache) Delete(key string) {
+func (c *Cache) GetEntry(key string) (Entry, bool) {
+	entry, ok := c.cache[key]
+	return entry, ok
+}
+
+func (c *Cache) Delete(key string) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	_, ok := c.cache[key]
 	delete(c.cache, key)
+	return ok
+}
+
+func (e Entry) MarshalJSON() ([]byte, error) {
+	buffer := bytes.NewBufferString("{")
+
+	value := e.value.String()
+	value = strings.Replace(value, "\n", "  ", -1)
+	value = strings.Replace(value, "\t", " ", -1)
+
+	buffer.WriteString(fmt.Sprintf("\"value\":\"%s\"", value))
+	buffer.WriteString(",")
+	buffer.WriteString(fmt.Sprintf("\"ttl\":%d", e.ttl))
+	buffer.WriteString("}")
+
+	return buffer.Bytes(), nil
+}
+
+func (c *Cache) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.cache)
 }

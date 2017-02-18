@@ -110,6 +110,7 @@ func TestFlush(t *testing.T) {
 	var ok bool
 	config := test.GetStubConfig()
 	config.Cache.FlushInterval = 1
+	config.Cache.MinTTL = 0
 	cache := NewCache(*config)
 	msg := test.GetDnsMsg()
 	msg.Answer[0].Header().Ttl = 1

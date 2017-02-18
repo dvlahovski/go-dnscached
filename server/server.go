@@ -61,6 +61,7 @@ func (s *Server) getRandServer() string {
 
 func (s *Server) makeRequest(questions []dns.Question) (dns.Msg, bool) {
 	request := new(dns.Msg)
+	// request.SetEdns0(4096, true)
 	request.Id = dns.Id()
 	request.RecursionDesired = true
 	request.Question = make([]dns.Question, len(questions))
@@ -132,11 +133,11 @@ func (s *Server) handleRequest(dnsWriter dns.ResponseWriter, clientRequest *dns.
 	}
 
 	question := clientRequest.Question[0].Name
-    if clientRequest.Question[0].Qtype == dns.TypeA {
-        question += "A"
-    } else {
-        question += "AAAA"
-    }
+	if clientRequest.Question[0].Qtype == dns.TypeA {
+		question += "A"
+	} else {
+		question += "AAAA"
+	}
 
 	cachedMsg, hit := s.cache.Get(question)
 
