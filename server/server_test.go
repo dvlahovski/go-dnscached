@@ -49,7 +49,7 @@ func TestListenAndServeFail(t *testing.T) {
 	}()
 	defer server.Shutdown()
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	errors2 := make(chan error)
 	server2 := getServer(t)
@@ -62,7 +62,7 @@ func TestListenAndServeFail(t *testing.T) {
 	case <-errors2:
 	case <-errors:
 		t.Fatalf("ListenAndServe should fail")
-	case <-time.After(2 * time.Second):
+	case <-time.After(3 * time.Second):
 		t.Fatalf("ListenAndServe should fail")
 	}
 }

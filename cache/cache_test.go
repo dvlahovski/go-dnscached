@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/dvlahovski/go-dnscached/test"
+	"github.com/miekg/dns"
 )
 
 func TestCreation(t *testing.T) {
@@ -78,6 +79,21 @@ func TestInsertionTwice(t *testing.T) {
 	}
 }
 
+func TestInsertionFromParams(t *testing.T) {
+	var ok bool
+	config := test.GetStubConfig()
+	cache := NewCache(*config)
+	ok = cache.InsertFromParams("google.bg", "1.2.3.4", dns.TypeA, 120)
+	if !ok {
+		t.Fatal("insert failed")
+	}
+
+	ok = cache.InsertFromParams("google.bg", "2a00:1450:4017:805::2003", dns.TypeAAAA, 240)
+	if !ok {
+		t.Fatal("insert failed")
+	}
+}
+
 func TestGetExisting(t *testing.T) {
 	var ok bool
 	config := test.GetStubConfig()
@@ -103,6 +119,50 @@ func TestGetNonExisting(t *testing.T) {
 	_, ok = cache.Get("google.bg")
 	if ok {
 		t.Fatal("get should fail")
+	}
+}
+
+func TestGetEntry(t *testing.T) {
+	var ok bool
+	config := test.GetStubConfig()
+	cache := NewCache(*config)
+	msg := test.GetDnsMsg()
+
+	now := time.Now().Unix()
+	ok = cache.Insert("google.bg", *msg)
+	if !ok {
+		t.Fatal("insertion failed")
+	}
+
+	entry, ok := cache.GetEntry("google.bg")
+	if !ok {
+		t.Fatal("get failed")
+	}
+
+	if entry.ttl != int(msg.Answer[0].Header().Ttl) + int(now) {
+		t.Fatalf("expected %d ttl, got %d", int(msg.Answer[0].Header().Ttl) + int(now), entry.ttl)
+	}
+}
+
+func TestDelete(t *testing.T) {
+	var ok bool
+	config := test.GetStubConfig()
+	cache := NewCache(*config)
+	msg := test.GetDnsMsg()
+
+	ok = cache.Insert("google.bg", *msg)
+	if !ok {
+		t.Fatal("insertion failed")
+	}
+
+	ok = cache.Delete("google.bg")
+	if !ok {
+		t.Fatal("delete failed")
+	}
+
+	ok = cache.Delete("google.bg")
+	if ok {
+		t.Fatal("delete should return false")
 	}
 }
 

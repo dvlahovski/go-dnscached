@@ -7,6 +7,8 @@ It uses this [DNS library](https://github.com/miekg/dns) for sending/receiving D
 Currently it caches only A and AAAA queries.
 If it receives a different query - it acts as a forwarding DNS server without caching.
 
+[Documentation](https://godoc.org/github.com/dvlahovski/go-dnscached)
+
 There is a json config file in `config/config.json`
 
 By default it creates a log file and also logs to STDOUT

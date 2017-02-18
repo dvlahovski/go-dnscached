@@ -31,7 +31,7 @@ func GetDnsMsg() *dns.Msg {
 
 	var err error
 	msg.Answer = make([]dns.RR, 1)
-	msg.Answer[0], err = dns.NewRR("google.bg. 299 IN A 93.123.23.52")
+	msg.Answer[0], err = dns.NewRR("google.bg. 300 IN A 93.123.23.52")
 	if err != nil {
 		os.Exit(-1)
 	}
