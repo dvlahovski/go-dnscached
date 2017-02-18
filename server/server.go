@@ -147,7 +147,7 @@ func (s *Server) handleRequest(dnsWriter dns.ResponseWriter, clientRequest *dns.
 		question += "AAAA"
 	}
 
-	cachedMsg, hit := s.cache.Get(question)
+	cachedMsg, hit := s.cache.Get(dns.Fqdn(question))
 
 	reply := new(dns.Msg)
 	response := dns.Msg{}
@@ -165,7 +165,7 @@ func (s *Server) handleRequest(dnsWriter dns.ResponseWriter, clientRequest *dns.
 			return
 		}
 
-		s.cache.Insert(question, response)
+		s.cache.Insert(dns.Fqdn(question), response)
 	}
 
 	reply.SetReply(clientRequest)

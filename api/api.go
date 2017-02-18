@@ -160,14 +160,10 @@ func Run(server *server.Server, cache *cache.Cache) error {
 	mux.HandleFunc("/cache/insert", api.cacheInsert)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path == "/" {
-			fmt.Fprintf(w, "Welcome to the jungle!")
-			return
-		}
 		http.NotFound(w, req)
 	})
 
 	s := &http.Server{Addr: ":8282", Handler: mux, WriteTimeout: 1 * time.Second}
-	log.Printf("Starting server on %s", s.Addr)
+	log.Printf("Starting REST API server on %s", s.Addr)
 	return s.ListenAndServe()
 }

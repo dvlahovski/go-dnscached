@@ -30,11 +30,11 @@ func main() {
 	log.Printf("Daemon started")
 	defer log.Printf("Daemon shutdown")
 
-	config, err := config.Load()
+	config, err := config.Load("config/config.json")
 	if err != nil {
 		return
 	}
-	fmt.Printf("%v\n", config)
+	fmt.Printf("config loaded: %v\n", config)
 
 	cache := cache.NewCache(*config)
 

@@ -53,8 +53,8 @@ func (c *Config) Valid() bool {
 }
 
 // Load the contents of the JSON config file and make some validations
-func Load() (*Config, error) {
-	file, err := os.Open("config/config.json")
+func Load(config_path string) (*Config, error) {
+	file, err := os.Open(config_path)
 	if err != nil {
 		log.Printf("error opening config file %s", err)
 		return nil, err
