@@ -1,10 +1,13 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/dvlahovski/go-dnscached/cache"
@@ -14,9 +17,10 @@ import (
 
 // servers is the list of DNS servers that we forward to/ask
 type Server struct {
-	server  *dns.Server
-	cache   cache.Cache
-	servers []net.UDPAddr
+	server       *dns.Server
+	cache        cache.Cache
+	servers      []net.UDPAddr
+	serversHttps []string
 }
 
 // Get a new server ready to start serving
@@ -44,6 +48,9 @@ func NewServer(cache cache.Cache, config config.Config) (*Server, error) {
 		s.servers[i] = *udpAddr
 	}
 
+	s.serversHttps = make([]string, len(config.Server.ServersHTTPS))
+	copy(s.serversHttps, config.Server.ServersHTTPS)
+
 	s.cache = cache
 
 	return s, nil
@@ -54,11 +61,44 @@ func (s *Server) Shutdown() error {
 	return s.server.Shutdown()
 }
 
-// Get a random DNS server to query
+// Get a random DNS server to query.
 func (s *Server) getRandServer() string {
 	rand.Seed(time.Now().Unix())
 	n := rand.Int() % len(s.servers)
 	return s.servers[n].String()
+}
+
+// Get a random DNS server to query over HTTPs.
+func (s *Server) getRandServerHttps() string {
+	rand.Seed(time.Now().Unix())
+	n := rand.Int() % len(s.serversHttps)
+	return s.serversHttps[n]
+}
+
+func makeDNSoverHTTPSrequest(url string, dnsMsg *dns.Msg) (*dns.Msg, error) {
+	rawDns, err := dnsMsg.Pack()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.Post(url, "application/dns-message", bytes.NewBuffer(rawDns))
+	if err != nil {
+		return nil, err
+	}
+
+	contents, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	answer := new(dns.Msg)
+	err = answer.Unpack(contents)
+	if err != nil {
+		return nil, err
+	}
+
+	return answer, nil
 }
 
 // Make a DNS request to a server
@@ -69,9 +109,16 @@ func (s *Server) makeRequest(questions []dns.Question) (dns.Msg, bool) {
 	request.Question = make([]dns.Question, len(questions))
 	copy(request.Question, questions)
 
-	client := new(dns.Client)
-	serverAddr := s.getRandServer()
-	serverResponse, _, err := client.Exchange(request, serverAddr)
+	var err error
+	var serverResponse *dns.Msg
+	if len(s.serversHttps) == 0 {
+		client := new(dns.Client)
+		serverAddr := s.getRandServer()
+		serverResponse, _, err = client.Exchange(request, serverAddr)
+	} else {
+		serverUrl := s.getRandServerHttps()
+		serverResponse, err = makeDNSoverHTTPSrequest(serverUrl, request)
+	}
 
 	if err != nil {
 		log.Printf("%s\n", err.Error())

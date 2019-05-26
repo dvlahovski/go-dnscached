@@ -1,7 +1,12 @@
 {
     "Server": {
         "Address": "0.0.0.0:3333",
-        "Servers": ["8.8.8.8:53"]
+        "Servers": ["8.8.8.8:53"],
+        "ServersHTTPS": [
+            "https://cloudflare-dns.com/dns-query",
+            "https://dns.google.com/experimental",
+            "https://dns.quad9.net/dns-query"
+        ]
     },
 
     "Cache": {

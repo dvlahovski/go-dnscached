@@ -109,7 +109,7 @@ func (c *Cache) hardcodeRecords(entries []config.CacheEntry) {
 			continue
 		}
 
-		c.Insert(dns.Fqdn(entry.Key)+entry.Type, *msg)
+		c.Insert(dns.Fqdn(entry.Key)+entry.Type+".", *msg)
 	}
 }
 

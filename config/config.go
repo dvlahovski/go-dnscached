@@ -25,6 +25,7 @@ type Config struct {
 type ServerConfig struct {
 	Address string   `json:"Address"`
 	Servers []string `json:"Servers"`
+	ServersHTTPS []string `json:"ServersHTTPS"`
 }
 
 // CacheConfig is the cache specific configuration
