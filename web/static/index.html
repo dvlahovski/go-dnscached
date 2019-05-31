@@ -1,0 +1,39 @@
+{{template "template_start"}}
+<h1>Съдържание на кеш паметта</h1>
+<table class="table table-striped table-bordered">
+  <thead>
+    <tr>
+      <th scope="col">URL</th>
+      <th scope="col">IP адрес</th>
+      <th scope="col">Тип</th>
+      <th scope="col">Валидност</th>
+      <th scope="col"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .CacheEntries}}
+    <tr>
+      <td>{{.Key}}</td>
+      <td>{{range .Value}} {{.}} <br/> {{end}}</td>
+      <td>{{.Type}}</td>
+      <td>{{toHumanTime .Ttl}}</td>
+      <td><button class="btn btn-danger delete-button" data-key="{{getKey .Key .Type}}">Изтрий</button></td>
+    </tr>
+    {{end}}
+    <tr>
+      <form class="form-inline" id="add-form">
+        <td><input type="text" class="form-control" placeholder="URL Адрес" id="add-url"></td>
+        <td><input type="text" class="form-control" placeholder="IP Адрес" id="add-ip"></td>
+        <td>
+          <select class="form-control" id="add-type">
+            <option>A</option>
+            <option>AAAA</option>
+          </select>
+        </td>
+        <td><input type="number" class="form-control" placeholder="Валидност (в секунди)" id="add-ttl"></td>
+        <td><button class="btn btn-success" type="submit">Добави</button></td>
+      </form>
+    </tr>
+  </tbody>
+</table>
+{{template "template_end"}}

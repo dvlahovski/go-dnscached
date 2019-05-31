@@ -42,6 +42,10 @@ func requiredParam(w http.ResponseWriter, req *http.Request, key string) (string
 	return value, true
 }
 
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+}
+
 // API insance
 type API struct {
 	server *server.Server
@@ -64,7 +68,8 @@ func (api *API) cacheGet(w http.ResponseWriter, req *http.Request) {
 
 	if !exists {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("400 - Bad Request!"))
+		w.Write([]byte("400 - Bad Request!\n"))
+		w.Write([]byte("Required param 'key' not set."))
 		return
 	}
 
@@ -86,6 +91,7 @@ func (api *API) cacheGet(w http.ResponseWriter, req *http.Request) {
 
 // delete a record from the cache by key = FQDN.TYPE
 func (api *API) cacheDelete(w http.ResponseWriter, req *http.Request) {
+	enableCors(&w)
 	value, exists := getParams(req, "key")
 
 	if !exists {
@@ -110,6 +116,7 @@ func (api *API) cacheDelete(w http.ResponseWriter, req *http.Request) {
 // ttl in seconds (0 for permanent)
 // value - IP address
 func (api *API) cacheInsert(w http.ResponseWriter, req *http.Request) {
+	enableCors(&w)
 	all := true
 	key, exists := requiredParam(w, req, "key")
 	all = all && exists

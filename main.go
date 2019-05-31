@@ -12,6 +12,7 @@ import (
 	"github.com/dvlahovski/go-dnscached/cache"
 	"github.com/dvlahovski/go-dnscached/config"
 	"github.com/dvlahovski/go-dnscached/server"
+	"github.com/dvlahovski/go-dnscached/web"
 )
 
 func main() {
@@ -50,6 +51,10 @@ func main() {
 
 	go func() {
 		log.Fatal(api.Run(server, cache))
+	}()
+
+	go func() {
+		log.Fatal(web.Run())
 	}()
 
 	sigs := make(chan os.Signal, 1)

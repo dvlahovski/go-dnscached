@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -58,12 +57,12 @@ func createPlaceholderMsg(key string, ip string, recordType uint16, ttl int) (*d
 type Entry struct {
 	ttl   int
 	hits  int
-	value dns.Msg
+	Value dns.Msg
 }
 
 // Cache object
 type Cache struct {
-	cache         map[string]Entry
+	Entries       map[string]Entry
 	capacity      int
 	flushInterval int
 	lock          sync.Mutex
@@ -73,7 +72,7 @@ type Cache struct {
 // NewCache returns a new cache instance
 func NewCache(cfg config.Config) *Cache {
 	c := new(Cache)
-	c.cache = make(map[string]Entry)
+	c.Entries = make(map[string]Entry)
 	c.lock = *new(sync.Mutex)
 	c.config = cfg
 	c.capacity = cfg.Cache.MaxEntries
@@ -119,14 +118,14 @@ func (c *Cache) flush() {
 	defer c.lock.Unlock()
 
 	now := time.Now().Unix()
-	for key, entry := range c.cache {
+	for key, entry := range c.Entries {
 		if entry.ttl == 0 {
 			continue
 		}
 
 		if int64(entry.ttl) <= now {
 			log.Printf("deleting key %s", key)
-			delete(c.cache, key)
+			delete(c.Entries, key)
 		}
 	}
 }
@@ -158,11 +157,11 @@ func (c *Cache) Insert(key string, value dns.Msg) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	if len(c.cache) >= c.capacity {
+	if len(c.Entries) >= c.capacity {
 		return false
 	}
 
-	if _, ok := c.cache[key]; ok {
+	if _, ok := c.Entries[key]; ok {
 		log.Printf("cache item (%s) exists on insert", key)
 		return false
 	}
@@ -181,9 +180,9 @@ func (c *Cache) Insert(key string, value dns.Msg) bool {
 
 	log.Printf("insert %s ttl %d", key, ttl)
 	entry.hits = 0
-	entry.value = value
+	entry.Value = value
 
-	c.cache[key] = *entry
+	c.Entries[key] = *entry
 
 	return true
 }
@@ -202,7 +201,7 @@ func (c *Cache) InsertFromParams(key string, ip string, recordType uint16, ttl i
 		recordTypeStr = "AAAA"
 	}
 
-	return c.Insert(dns.Fqdn(key)+recordTypeStr, *msg)
+	return c.Insert(dns.Fqdn(key)+recordTypeStr+".", *msg)
 }
 
 // Get a DNS msg from the cache
@@ -210,20 +209,20 @@ func (c *Cache) Get(key string) (dns.Msg, bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	entry, ok := c.cache[key]
+	entry, ok := c.Entries[key]
 	if !ok {
 		return dns.Msg{}, false
 	}
 
 	entry.hits++
-	c.cache[key] = entry
+	c.Entries[key] = entry
 
-	return c.cache[key].value, true
+	return c.Entries[key].Value, true
 }
 
 // GetEntry returns the internal entry
 func (c *Cache) GetEntry(key string) (Entry, bool) {
-	entry, ok := c.cache[key]
+	entry, ok := c.Entries[key]
 	return entry, ok
 }
 
@@ -232,28 +231,49 @@ func (c *Cache) Delete(key string) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	_, ok := c.cache[key]
-	delete(c.cache, key)
+	_, ok := c.Entries[key]
+	delete(c.Entries, key)
 	return ok
 }
 
-// MarshalJSON return a json representation of an entry
+type StringEntry struct {
+	Key   string
+	Value []string
+	Ttl   int
+	Type  string
+}
+
+func (e Entry) ToStringEntry() StringEntry {
+	stringEntry := new(StringEntry)
+	// stringEntry.Value = make([]string, len(e.Value.Answer))
+	var key string
+	var recordType string
+	for _, addr := range e.Value.Answer {
+		addrStr := addr.String()
+		addrStr = strings.Replace(addrStr, "\t", " ", -1)
+		var ignore string
+		var ip string
+		fmt.Sscanf(addrStr, "%s %s IN %s %s", &key, &ignore, &recordType, &ip)
+		stringEntry.Value = append(stringEntry.Value, ip)
+	}
+
+	stringEntry.Key = key[:len(key)-1]
+	stringEntry.Type = recordType
+	stringEntry.Ttl = e.ttl
+
+	return *stringEntry
+}
+
 func (e Entry) MarshalJSON() ([]byte, error) {
-	buffer := bytes.NewBufferString("{")
-
-	value := e.value.String()
-	value = strings.Replace(value, "\n", "  ", -1)
-	value = strings.Replace(value, "\t", " ", -1)
-
-	buffer.WriteString(fmt.Sprintf("\"value\":\"%s\"", value))
-	buffer.WriteString(",")
-	buffer.WriteString(fmt.Sprintf("\"ttl\":%d", e.ttl))
-	buffer.WriteString("}")
-
-	return buffer.Bytes(), nil
+	return json.Marshal(e.ToStringEntry())
 }
 
 // MarshalJSON returns a json representation of the cache's contents
 func (c *Cache) MarshalJSON() ([]byte, error) {
-	return json.Marshal(c.cache)
+	var entries []StringEntry
+	for _, entry := range c.Entries {
+		entries = append(entries, entry.ToStringEntry())
+	}
+
+	return json.Marshal(entries)
 }
