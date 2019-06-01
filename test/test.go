@@ -49,27 +49,27 @@ func GetDnsMsgQuestion() *dns.Msg {
 }
 
 type StubResponseWriter struct {
-	Msg dns.Msg
+	Msg *dns.Msg
 }
 
-func (s StubResponseWriter) LocalAddr() net.Addr {
+func (s *StubResponseWriter) LocalAddr() net.Addr {
 	return nil
 }
-func (s StubResponseWriter) RemoteAddr() net.Addr {
+func (s *StubResponseWriter) RemoteAddr() net.Addr {
 	return nil
 }
-func (s StubResponseWriter) WriteMsg(msg *dns.Msg) error {
-	s.Msg = *msg
+func (s *StubResponseWriter) WriteMsg(msg *dns.Msg) error {
+	s.Msg = msg
 	return nil
 }
-func (s StubResponseWriter) Write([]byte) (int, error) {
+func (s *StubResponseWriter) Write([]byte) (int, error) {
 	return 0, nil
 }
-func (s StubResponseWriter) Close() error {
+func (s *StubResponseWriter) Close() error {
 	return nil
 }
-func (s StubResponseWriter) TsigStatus() error {
+func (s *StubResponseWriter) TsigStatus() error {
 	return nil
 }
-func (s StubResponseWriter) TsigTimersOnly(bool) {}
-func (s StubResponseWriter) Hijack()             {}
+func (s *StubResponseWriter) TsigTimersOnly(bool) {}
+func (s *StubResponseWriter) Hijack()             {}

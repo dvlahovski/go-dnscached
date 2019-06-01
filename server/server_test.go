@@ -67,17 +67,14 @@ func TestListenAndServeFail(t *testing.T) {
 	}
 }
 
-// func TestHandleRequest(t *testing.T) {
-// 	server := getServer(t)
-// 	msg := test.GetDnsMsgQuestion()
-// 	respWriter := new(test.StubResponseWriter)
-// 	server.handleRequest(respWriter, msg)
+func TestHandleRequest(t *testing.T) {
+	server := getServer(t)
+	msg := test.GetDnsMsgQuestion()
+	respWriter := new(test.StubResponseWriter)
+	server.handleRequest(respWriter, msg)
 
-// 	respMsg := respWriter.Msg
-// 	fmt.Printf("%v", respMsg)
-// 	fmt.Printf("%v", msg)
-// 	if respMsg.Question[0] != msg.Question[0] {
-// 		t.Errorf("mismatching question")
-// 	}
-
-// }
+	respMsg := respWriter.Msg
+	if respMsg.Question[0] != msg.Question[0] {
+		t.Errorf("mismatching question")
+	}
+}

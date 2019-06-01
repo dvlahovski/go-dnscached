@@ -245,7 +245,6 @@ type StringEntry struct {
 
 func (e Entry) ToStringEntry() StringEntry {
 	stringEntry := new(StringEntry)
-	// stringEntry.Value = make([]string, len(e.Value.Answer))
 	var key string
 	var recordType string
 	for _, addr := range e.Value.Answer {
