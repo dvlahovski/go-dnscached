@@ -21,7 +21,7 @@ func TestInsertionSucceeds(t *testing.T) {
 	var ok bool
 	config := test.GetStubConfig()
 	cache := NewCache(*config)
-	msg := test.GetDnsMsg()
+	msg := test.GetDnsMsgAnswer()
 
 	ok = cache.Insert("google.bg", *msg)
 	if !ok {
@@ -33,7 +33,7 @@ func TestInsertionFailsOnEmptyAnswers(t *testing.T) {
 	var ok bool
 	config := test.GetStubConfig()
 	cache := NewCache(*config)
-	msg := test.GetDnsMsg()
+	msg := test.GetDnsMsgAnswer()
 
 	// overwrite answer to be empty
 	msg.Answer = msg.Answer[:0]
@@ -46,7 +46,7 @@ func TestInsertionFailsOnEmptyAnswers(t *testing.T) {
 func TestInsertionOverCapacity(t *testing.T) {
 	var ok bool
 	config := test.GetStubConfig()
-	msg := test.GetDnsMsg()
+	msg := test.GetDnsMsgAnswer()
 
 	config.Cache.MaxEntries = 1
 	cache := NewCache(*config)
@@ -66,7 +66,7 @@ func TestInsertionTwice(t *testing.T) {
 	var ok bool
 	config := test.GetStubConfig()
 	cache := NewCache(*config)
-	msg := test.GetDnsMsg()
+	msg := test.GetDnsMsgAnswer()
 
 	ok = cache.Insert("google.bg", *msg)
 	if !ok {
@@ -98,7 +98,7 @@ func TestGetExisting(t *testing.T) {
 	var ok bool
 	config := test.GetStubConfig()
 	cache := NewCache(*config)
-	msg := test.GetDnsMsg()
+	msg := test.GetDnsMsgAnswer()
 
 	ok = cache.Insert("google.bg", *msg)
 	if !ok {
@@ -126,7 +126,7 @@ func TestGetEntry(t *testing.T) {
 	var ok bool
 	config := test.GetStubConfig()
 	cache := NewCache(*config)
-	msg := test.GetDnsMsg()
+	msg := test.GetDnsMsgAnswer()
 
 	now := time.Now().Unix()
 	ok = cache.Insert("google.bg", *msg)
@@ -166,7 +166,7 @@ func TestDelete(t *testing.T) {
 	var ok bool
 	config := test.GetStubConfig()
 	cache := NewCache(*config)
-	msg := test.GetDnsMsg()
+	msg := test.GetDnsMsgAnswer()
 
 	ok = cache.Insert("google.bg", *msg)
 	if !ok {
@@ -182,6 +182,11 @@ func TestDelete(t *testing.T) {
 	if ok {
 		t.Fatal("delete should return false")
 	}
+
+	_, ok = cache.Get("google.bg")
+	if ok {
+		t.Fatal("get should return false")
+	}
 }
 
 func TestFlush(t *testing.T) {
@@ -190,7 +195,7 @@ func TestFlush(t *testing.T) {
 	config.Cache.FlushInterval = 1
 	config.Cache.MinTTL = 0
 	cache := NewCache(*config)
-	msg := test.GetDnsMsg()
+	msg := test.GetDnsMsgAnswer()
 	msg.Answer[0].Header().Ttl = 1
 
 	ok = cache.Insert("google.bg", *msg)
@@ -199,7 +204,7 @@ func TestFlush(t *testing.T) {
 	}
 
 	_, ok = cache.Get("google.bg")
-	if ok != true {
+	if !ok {
 		t.Fatal("get failed")
 	}
 

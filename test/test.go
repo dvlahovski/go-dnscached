@@ -3,6 +3,7 @@ package test
 import (
 	"net"
 	"os"
+	"time"
 
 	"github.com/dvlahovski/go-dnscached/config"
 	"github.com/miekg/dns"
@@ -23,27 +24,39 @@ func GetStubConfig() *config.Config {
 	return cfg
 }
 
-func GetDnsMsg() *dns.Msg {
-	msg := new(dns.Msg)
-	msg.Id = dns.Id()
-	msg.RecursionDesired = true
-	// msg.SetQuestion("google.bg.", dns.TypeA)
+// func GetDnsMsg() *dns.Msg {
+// 	msg := new(dns.Msg)
+// 	msg.Id = dns.Id()
+// 	msg.RecursionDesired = true
+// 	// msg.SetQuestion("google.bg.", dns.TypeA)
 
-	var err error
-	msg.Answer = make([]dns.RR, 1)
-	msg.Answer[0], err = dns.NewRR("google.bg. 300 IN A 93.123.23.52")
-	if err != nil {
-		os.Exit(-1)
-	}
+// 	var err error
+// 	msg.Answer = make([]dns.RR, 1)
+// 	msg.Answer[0], err = dns.NewRR("google.bg. 300 IN A 93.123.23.52")
+// 	if err != nil {
+// 		os.Exit(-1)
+// 	}
 
-	return msg
-}
+// 	return msg
+// }
 
 func GetDnsMsgQuestion() *dns.Msg {
 	msg := new(dns.Msg)
 	msg.Id = dns.Id()
 	msg.RecursionDesired = true
 	msg.SetQuestion("google.bg.", dns.TypeA)
+
+	return msg
+}
+
+func GetDnsMsgAnswer() *dns.Msg {
+	msg := GetDnsMsgQuestion()
+	var err error
+	msg.Answer = make([]dns.RR, 1)
+	msg.Answer[0], err = dns.NewRR("google.bg.\t300\tIN\tA\t1.2.3.4")
+	if err != nil {
+		os.Exit(-1)
+	}
 
 	return msg
 }
@@ -73,3 +86,15 @@ func (s *StubResponseWriter) TsigStatus() error {
 }
 func (s *StubResponseWriter) TsigTimersOnly(bool) {}
 func (s *StubResponseWriter) Hijack()             {}
+
+type StubDnsClient struct {
+	Reply *dns.Msg
+}
+
+func (s *StubDnsClient) Exchange(m *dns.Msg, address string) (*dns.Msg, time.Duration, error) {
+	return s.Reply, 0, nil
+}
+
+func (s *StubDnsClient) SetReply(reply *dns.Msg) {
+	s.Reply = reply
+}

@@ -8,11 +8,12 @@ import (
 	"github.com/dvlahovski/go-dnscached/test"
 )
 
-func getServer(t *testing.T) *Server {
+func GetServer(t *testing.T) *Server {
 	config := test.GetStubConfig()
 	cache := cache.NewCache(*config)
+	client := new(test.StubDnsClient)
 
-	server, err := NewServer(*cache, *config)
+	server, err := NewServer(*cache, *config, client)
 	if err != nil {
 		t.Fatalf("server creation error: %s", err.Error())
 	}
@@ -21,12 +22,12 @@ func getServer(t *testing.T) *Server {
 }
 
 func TestCreation(t *testing.T) {
-	server := getServer(t)
+	server := GetServer(t)
 	defer server.Shutdown()
 }
 
 func TestListenAndServe(t *testing.T) {
-	server := getServer(t)
+	server := GetServer(t)
 	defer server.Shutdown()
 
 	errors := make(chan error)
@@ -43,7 +44,7 @@ func TestListenAndServe(t *testing.T) {
 
 func TestListenAndServeFail(t *testing.T) {
 	errors := make(chan error)
-	server := getServer(t)
+	server := GetServer(t)
 	go func() {
 		errors <- server.ListenAndServe()
 	}()
@@ -52,7 +53,7 @@ func TestListenAndServeFail(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	errors2 := make(chan error)
-	server2 := getServer(t)
+	server2 := GetServer(t)
 	go func() {
 		errors2 <- server.ListenAndServe()
 	}()
@@ -68,10 +69,10 @@ func TestListenAndServeFail(t *testing.T) {
 }
 
 func TestHandleRequest(t *testing.T) {
-	server := getServer(t)
+	server := GetServer(t)
 	msg := test.GetDnsMsgQuestion()
 	respWriter := new(test.StubResponseWriter)
-	server.handleRequest(respWriter, msg)
+	server.HandleRequest(respWriter, msg)
 
 	respMsg := respWriter.Msg
 	if respMsg.Question[0] != msg.Question[0] {

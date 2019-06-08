@@ -15,16 +15,22 @@ import (
 	"github.com/miekg/dns"
 )
 
+
+type DnsClient interface {
+	Exchange(m *dns.Msg, address string) (*dns.Msg, time.Duration, error)
+}
+
 // servers is the list of DNS servers that we forward to/ask
 type Server struct {
 	server       *dns.Server
 	cache        cache.Cache
 	servers      []net.UDPAddr
 	serversHttps []string
+	client DnsClient
 }
 
 // Get a new server ready to start serving
-func NewServer(cache cache.Cache, config config.Config) (*Server, error) {
+func NewServer(cache cache.Cache, config config.Config, client DnsClient) (*Server, error) {
 	s := new(Server)
 	addr, err := net.ResolveUDPAddr("udp", config.Server.Address)
 	if err != nil {
@@ -52,6 +58,7 @@ func NewServer(cache cache.Cache, config config.Config) (*Server, error) {
 	copy(s.serversHttps, config.Server.ServersHTTPS)
 
 	s.cache = cache
+	s.client = client
 
 	return s, nil
 }
@@ -112,9 +119,8 @@ func (s *Server) makeRequest(questions []dns.Question) (dns.Msg, bool) {
 	var err error
 	var serverResponse *dns.Msg
 	if len(s.serversHttps) == 0 {
-		client := new(dns.Client)
 		serverAddr := s.getRandServer()
-		serverResponse, _, err = client.Exchange(request, serverAddr)
+		serverResponse, _, err = s.client.Exchange(request, serverAddr)
 	} else {
 		serverUrl := s.getRandServerHttps()
 		serverResponse, err = makeDNSoverHTTPSrequest(serverUrl, request)
@@ -176,7 +182,7 @@ func (s *Server) passThrough(dnsWriter dns.ResponseWriter, clientRequest *dns.Ms
 // Handle a client request
 // Check if there is a cache record and return it or create it
 // Ask one of the DNS servers if the record is not in the cache
-func (s *Server) handleRequest(dnsWriter dns.ResponseWriter, clientRequest *dns.Msg) {
+func (s *Server) HandleRequest(dnsWriter dns.ResponseWriter, clientRequest *dns.Msg) {
 	if (len(clientRequest.Question)) != 1 {
 		s.passThrough(dnsWriter, clientRequest)
 		return
@@ -231,7 +237,7 @@ func (s *Server) handleRequest(dnsWriter dns.ResponseWriter, clientRequest *dns.
 
 // Start the server
 func (s *Server) ListenAndServe() error {
-	dns.HandleFunc(".", s.handleRequest)
+	dns.HandleFunc(".", s.HandleRequest)
 
 	if err := s.server.ListenAndServe(); err != nil {
 		return err

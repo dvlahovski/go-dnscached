@@ -13,6 +13,7 @@ import (
 	"github.com/dvlahovski/go-dnscached/config"
 	"github.com/dvlahovski/go-dnscached/server"
 	"github.com/dvlahovski/go-dnscached/web"
+	"github.com/miekg/dns"
 )
 
 func main() {
@@ -38,8 +39,8 @@ func main() {
 	fmt.Printf("config loaded: %v\n", config)
 
 	cache := cache.NewCache(*config)
-
-	server, err := server.NewServer(*cache, *config)
+	client := new(dns.Client)
+	server, err := server.NewServer(*cache, *config, client)
 	if err != nil {
 		log.Printf("server creation error: %s", err.Error())
 		return
