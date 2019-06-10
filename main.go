@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -39,8 +40,9 @@ func main() {
 	fmt.Printf("config loaded: %v\n", config)
 
 	cache := cache.NewCache(*config)
-	client := new(dns.Client)
-	server, err := server.NewServer(*cache, *config, client)
+	dnsClient := new(dns.Client)
+	httpClient := &http.Client{}
+	server, err := server.NewServer(*cache, *config, dnsClient, httpClient)
 	if err != nil {
 		log.Printf("server creation error: %s", err.Error())
 		return

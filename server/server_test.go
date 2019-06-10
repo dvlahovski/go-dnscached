@@ -11,9 +11,10 @@ import (
 func GetServer(t *testing.T) *Server {
 	config := test.GetStubConfig()
 	cache := cache.NewCache(*config)
-	client := new(test.StubDnsClient)
+	dnsClient := new(test.StubDnsClient)
+	httpClient := &http.Client{}
 
-	server, err := NewServer(*cache, *config, client)
+	server, err := NewServer(*cache, *config, dnsClient, httpClient)
 	if err != nil {
 		t.Fatalf("server creation error: %s", err.Error())
 	}

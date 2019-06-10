@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -15,9 +16,12 @@ import (
 	"github.com/miekg/dns"
 )
 
-
 type DnsClient interface {
 	Exchange(m *dns.Msg, address string) (*dns.Msg, time.Duration, error)
+}
+
+type HttpClient interface {
+	Post(url, contentType string, body io.Reader) (resp *http.Response, err error)
 }
 
 // servers is the list of DNS servers that we forward to/ask
@@ -26,11 +30,12 @@ type Server struct {
 	cache        cache.Cache
 	servers      []net.UDPAddr
 	serversHttps []string
-	client DnsClient
+	dnsClient    DnsClient
+	httpClient   HttpClient
 }
 
 // Get a new server ready to start serving
-func NewServer(cache cache.Cache, config config.Config, client DnsClient) (*Server, error) {
+func NewServer(cache cache.Cache, config config.Config, dnsClient DnsClient, httpClient HttpClient) (*Server, error) {
 	s := new(Server)
 	addr, err := net.ResolveUDPAddr("udp", config.Server.Address)
 	if err != nil {
@@ -58,7 +63,8 @@ func NewServer(cache cache.Cache, config config.Config, client DnsClient) (*Serv
 	copy(s.serversHttps, config.Server.ServersHTTPS)
 
 	s.cache = cache
-	s.client = client
+	s.dnsClient = dnsClient
+	s.httpClient = httpClient
 
 	return s, nil
 }
@@ -82,13 +88,13 @@ func (s *Server) getRandServerHttps() string {
 	return s.serversHttps[n]
 }
 
-func makeDNSoverHTTPSrequest(url string, dnsMsg *dns.Msg) (*dns.Msg, error) {
+func (s *Server) makeDNSoverHTTPSrequest(url string, dnsMsg *dns.Msg) (*dns.Msg, error) {
 	rawDns, err := dnsMsg.Pack()
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := http.Post(url, "application/dns-message", bytes.NewBuffer(rawDns))
+	resp, err := s.httpClient.Post(url, "application/dns-message", bytes.NewBuffer(rawDns))
 	if err != nil {
 		return nil, err
 	}
@@ -120,10 +126,10 @@ func (s *Server) makeRequest(questions []dns.Question) (dns.Msg, bool) {
 	var serverResponse *dns.Msg
 	if len(s.serversHttps) == 0 {
 		serverAddr := s.getRandServer()
-		serverResponse, _, err = s.client.Exchange(request, serverAddr)
+		serverResponse, _, err = s.dnsClient.Exchange(request, serverAddr)
 	} else {
 		serverUrl := s.getRandServerHttps()
-		serverResponse, err = makeDNSoverHTTPSrequest(serverUrl, request)
+		serverResponse, err = s.makeDNSoverHTTPSrequest(serverUrl, request)
 	}
 
 	if err != nil {

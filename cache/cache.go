@@ -248,6 +248,9 @@ func (e Entry) ToStringEntry() StringEntry {
 	var key string
 	var recordType string
 	for _, addr := range e.Value.Answer {
+		if addr.Header().Rrtype != dns.TypeA && addr.Header().Rrtype != dns.TypeAAAA {
+			continue
+		}
 		addrStr := addr.String()
 		addrStr = strings.Replace(addrStr, "\t", " ", -1)
 		var ignore string

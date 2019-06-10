@@ -215,3 +215,53 @@ func TestFlush(t *testing.T) {
 		t.Fatal("get should fail")
 	}
 }
+
+func TestDoesNotFlushZeroTtl(t *testing.T) {
+	var ok bool
+	config := test.GetStubConfig()
+	config.Cache.FlushInterval = 1
+	config.Cache.MinTTL = 0
+	cache := NewCache(*config)
+	msg := test.GetDnsMsgAnswer()
+	msg.Answer[0].Header().Ttl = 0
+
+	ok = cache.Insert("google.bg", *msg)
+	if !ok {
+		t.Fatal("insertion failed")
+	}
+
+	_, ok = cache.Get("google.bg")
+	if !ok {
+		t.Fatal("get failed")
+	}
+
+	time.Sleep(2 * time.Second)
+
+	_, ok = cache.Get("google.bg")
+	if !ok {
+		t.Fatal("get failed")
+	}
+}
+
+func TestToStringEntry(t *testing.T) {
+	var entry Entry
+	entry.ttl = 101
+	entry.Value = *test.GetDnsMsgAnswer()
+
+	strEntry := entry.ToStringEntry()
+	if strEntry.Key != "google.bg" {
+		t.Fatal("Key is incorrect")
+	}
+
+	if strEntry.Value[0] != "1.2.3.4" {
+		t.Fatal("IP is incorrect")
+	}
+
+	if strEntry.Ttl != 101 {
+		t.Fatal("TTL is incorrect")
+	}
+
+	if strEntry.Type != "A" {
+		t.Fatal("Type is incorrect")
+	}
+}
