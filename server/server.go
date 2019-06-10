@@ -27,7 +27,7 @@ type HttpClient interface {
 // servers is the list of DNS servers that we forward to/ask
 type Server struct {
 	server       *dns.Server
-	cache        cache.Cache
+	cache        *cache.Cache
 	servers      []net.UDPAddr
 	serversHttps []string
 	dnsClient    DnsClient
@@ -35,7 +35,7 @@ type Server struct {
 }
 
 // Get a new server ready to start serving
-func NewServer(cache cache.Cache, config config.Config, dnsClient DnsClient, httpClient HttpClient) (*Server, error) {
+func NewServer(cache *cache.Cache, config *config.Config, dnsClient DnsClient, httpClient HttpClient) (*Server, error) {
 	s := new(Server)
 	addr, err := net.ResolveUDPAddr("udp", config.Server.Address)
 	if err != nil {

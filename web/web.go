@@ -74,7 +74,9 @@ func (web *WEB) index(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	t.Execute(w, p)
+	if err := t.Execute(w, p); err != nil {
+		log.Printf("HTML template parsing failed: %s", err)
+	}
 }
 
 // Run the Web HTTP server

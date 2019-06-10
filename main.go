@@ -42,7 +42,7 @@ func main() {
 	cache := cache.NewCache(*config)
 	dnsClient := new(dns.Client)
 	httpClient := &http.Client{}
-	server, err := server.NewServer(*cache, *config, dnsClient, httpClient)
+	server, err := server.NewServer(cache, config, dnsClient, httpClient)
 	if err != nil {
 		log.Printf("server creation error: %s", err.Error())
 		return

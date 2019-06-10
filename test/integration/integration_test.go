@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"net/http"
 	"strings"
 	"testing"
 
@@ -16,12 +17,12 @@ func Init(t *testing.T) (*server.Server, *cache.Cache, *test.StubDnsClient) {
 	dnsClient := new(test.StubDnsClient)
 	httpClient := &http.Client{}
 
-	server, err := server.NewServer(*cache, *config, dnsClient, httpClient)
+	server, err := server.NewServer(cache, config, dnsClient, httpClient)
 	if err != nil {
 		t.Fatalf("server creation error: %s", err.Error())
 	}
 
-	return server, cache, client
+	return server, cache, dnsClient
 }
 
 func compareRR(a, b dns.RR) bool {
