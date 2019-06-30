@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/dvlahovski/go-dnscached/api"
 	"github.com/dvlahovski/go-dnscached/cache"
@@ -41,7 +42,7 @@ func main() {
 
 	cache := cache.NewCache(*config)
 	dnsClient := new(dns.Client)
-	httpClient := &http.Client{}
+	httpClient := &http.Client{Timeout: 15 * time.Second}
 	server, err := server.NewServer(cache, config, dnsClient, httpClient)
 	if err != nil {
 		log.Printf("server creation error: %s", err.Error())
@@ -53,11 +54,11 @@ func main() {
 	}()
 
 	go func() {
-		log.Fatal(api.Run(server, cache))
+		log.Fatal(api.Run(server, cache, &config.Api))
 	}()
 
 	go func() {
-		log.Fatal(web.Run())
+		log.Fatal(web.Run(&config.Web, &config.Api))
 	}()
 
 	sigs := make(chan os.Signal, 1)

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dvlahovski/go-dnscached/cache"
+	"github.com/dvlahovski/go-dnscached/config"
 	"github.com/dvlahovski/go-dnscached/server"
 	"github.com/miekg/dns"
 )
@@ -155,7 +156,7 @@ func (api *API) cacheInsert(w http.ResponseWriter, req *http.Request) {
 }
 
 // Run the API HTTP server
-func Run(server *server.Server, cache *cache.Cache) error {
+func Run(server *server.Server, cache *cache.Cache, cfg *config.ApiConfig) error {
 	api := new(API)
 	api.cache = cache
 	api.server = server
@@ -170,7 +171,7 @@ func Run(server *server.Server, cache *cache.Cache) error {
 		http.NotFound(w, req)
 	})
 
-	s := &http.Server{Addr: ":8282", Handler: mux, WriteTimeout: 1 * time.Second}
+	s := &http.Server{Addr: cfg.Address, Handler: mux, WriteTimeout: 1 * time.Second}
 	log.Printf("Starting REST API server on %s", s.Addr)
 	return s.ListenAndServe()
 }

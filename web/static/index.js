@@ -4,7 +4,7 @@ $(document).ready(function() {
             return;
         }
         $.ajax({
-            url: "http://localhost:8282/cache/delete",
+            url: "http://" + api_address + "/cache/delete",
             data: {
                 key: $(this).attr("data-key"),
             },
@@ -19,7 +19,7 @@ $(document).ready(function() {
 
     $("#add-form").submit(function(event) {
         $.ajax({
-            url: "http://localhost:8282/cache/insert",
+            url: "http://" + api_address + "/cache/insert",
             data: {
                 key: $("#add-url").val(),
                 type: $("#add-type").val(),
@@ -29,7 +29,7 @@ $(document).ready(function() {
             type: "GET",
             crossDomain: true,
             error: function (xhr, status) {
-                alert("Грешка при изтриване!");
+                alert("Грешка при добавяне!");
             }
         });
         // location.reload();

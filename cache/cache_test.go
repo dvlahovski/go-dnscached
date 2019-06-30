@@ -139,8 +139,8 @@ func TestGetEntry(t *testing.T) {
 		t.Fatal("get entry failed")
 	}
 
-	if entry.ttl != int(msg.Answer[0].Header().Ttl) + int(now) {
-		t.Fatalf("expected %d ttl, got %d", int(msg.Answer[0].Header().Ttl) + int(now), entry.ttl)
+	if entry.ttl != int(msg.Answer[0].Header().Ttl)+int(now) {
+		t.Fatalf("expected %d ttl, got %d", int(msg.Answer[0].Header().Ttl)+int(now), entry.ttl)
 	}
 
 	if entry.hits != 0 {

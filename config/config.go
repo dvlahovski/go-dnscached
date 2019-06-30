@@ -19,12 +19,14 @@ type Config struct {
 	Server  ServerConfig `json:"Server"`
 	Cache   CacheConfig  `json:"Cache"`
 	Entries []CacheEntry `json:"CacheEntries"`
+	Web     WebConfig    `json:"Web"`
+	Api     ApiConfig    `json:"Api"`
 }
 
 // ServerConfig is the server specific configuration
 type ServerConfig struct {
-	Address string   `json:"Address"`
-	Servers []string `json:"Servers"`
+	Address      string   `json:"Address"`
+	Servers      []string `json:"Servers"`
 	ServersHTTPS []string `json:"ServersHTTPS"`
 }
 
@@ -42,6 +44,16 @@ type CacheEntry struct {
 	Value net.IP `json:"Value"`
 	Type  string `json:"Type"`
 	Ttl   int    `json:"Ttl"`
+}
+
+// WebConfig is the configuration for the web GUI.
+type WebConfig struct {
+	Address string `json:"Address"`
+}
+
+// ApiConfig is the configuration for the HTTP API.
+type ApiConfig struct {
+	Address string `json:"Address"`
 }
 
 // Valid checks if the loaded config is valid

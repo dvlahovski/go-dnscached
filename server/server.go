@@ -114,6 +114,28 @@ func (s *Server) makeDNSoverHTTPSrequest(url string, dnsMsg *dns.Msg) (*dns.Msg,
 	return answer, nil
 }
 
+func (s *Server) callFirstSuccessfulServer(request *dns.Msg) (serverResponse *dns.Msg, err error) {
+	for _, serverUrl := range s.serversHttps {
+		serverResponse, err = s.makeDNSoverHTTPSrequest(serverUrl, request)
+		if err != nil {
+			log.Printf("server: %s, failed with: %s", serverUrl, err)
+		} else {
+			return
+		}
+	}
+
+	for _, serverAddr := range s.servers {
+		serverResponse, _, err = s.dnsClient.Exchange(request, serverAddr.String())
+		if err != nil {
+			log.Printf("server: %s, failed with: %s", serverAddr.String(), err)
+		} else {
+			return
+		}
+	}
+
+	return
+}
+
 // Make a DNS request to a server
 func (s *Server) makeRequest(questions []dns.Question) (dns.Msg, bool) {
 	request := new(dns.Msg)
@@ -122,15 +144,7 @@ func (s *Server) makeRequest(questions []dns.Question) (dns.Msg, bool) {
 	request.Question = make([]dns.Question, len(questions))
 	copy(request.Question, questions)
 
-	var err error
-	var serverResponse *dns.Msg
-	if len(s.serversHttps) == 0 {
-		serverAddr := s.getRandServer()
-		serverResponse, _, err = s.dnsClient.Exchange(request, serverAddr)
-	} else {
-		serverUrl := s.getRandServerHttps()
-		serverResponse, err = s.makeDNSoverHTTPSrequest(serverUrl, request)
-	}
+	serverResponse, err := s.callFirstSuccessfulServer(request)
 
 	if err != nil {
 		log.Printf("%s\n", err.Error())
@@ -214,7 +228,7 @@ func (s *Server) HandleRequest(dnsWriter dns.ResponseWriter, clientRequest *dns.
 	if hit {
 		response = cachedMsg
 	} else {
-		var ok = false
+		var ok bool
 		response, ok = s.makeRequest(clientRequest.Question)
 
 		rcode := s.shouldSendErrorResponse(response, ok)

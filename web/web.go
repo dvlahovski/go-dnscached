@@ -10,18 +10,21 @@ import (
 	"time"
 
 	"github.com/dvlahovski/go-dnscached/cache"
+	"github.com/dvlahovski/go-dnscached/config"
 )
 
 // Web insance
 type WEB struct {
+	apiCfg *config.ApiConfig
 }
 
 type Page struct {
 	CacheEntries []cache.StringEntry
+	ApiAddress   string
 }
 
 func (web *WEB) getCacheEntries() ([]cache.StringEntry, error) {
-	res, err := http.Get("http://localhost:8282/cache/all")
+	res, err := http.Get("http://" + web.apiCfg.Address + "/cache/all")
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +49,6 @@ func handleError(err error, w http.ResponseWriter) {
 	w.Write([]byte(err.Error()))
 }
 
-// TODO
 func (web *WEB) index(w http.ResponseWriter, req *http.Request) {
 	cacheEntries, err := web.getCacheEntries()
 	if err != nil {
@@ -56,6 +58,7 @@ func (web *WEB) index(w http.ResponseWriter, req *http.Request) {
 
 	p := &Page{
 		CacheEntries: cacheEntries,
+		ApiAddress:   web.apiCfg.Address,
 	}
 
 	t, err := template.New("index.html").Funcs(template.FuncMap{
@@ -80,18 +83,15 @@ func (web *WEB) index(w http.ResponseWriter, req *http.Request) {
 }
 
 // Run the Web HTTP server
-func Run() error {
+func Run(cfg *config.WebConfig, apiCfg *config.ApiConfig) error {
 	web := new(WEB)
+	web.apiCfg = apiCfg
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", web.index)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
-	// mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-	//     http.NotFound(w, req)
-	// })
-
-	s := &http.Server{Addr: ":8080", Handler: mux, WriteTimeout: 1 * time.Second}
+	s := &http.Server{Addr: cfg.Address, Handler: mux, WriteTimeout: 1 * time.Second}
 	log.Printf("Starting Web GUI server on %s", s.Addr)
 	return s.ListenAndServe()
 }
